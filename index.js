@@ -95,7 +95,7 @@ exports.handler = (event, context, callback) => {
                 console.log(err);
                 throw err;
             }
-            // console.log("Data removed. Response = " + data);  
+            // console.log("Data removed. Response = " + data);
         });
     }
 
@@ -114,6 +114,7 @@ exports.handler = (event, context, callback) => {
         var msgComplaint = [];
         var msgDeliveries = [];
 
+        var messagesProcessed = 0;
         for (var i = 0; i < queueSize; i++) {
             sqs.receiveMessage(queueParams, (err, data) => {
                 if (err) {
@@ -126,98 +127,106 @@ exports.handler = (event, context, callback) => {
                     var message = data.Messages[0];
                     body = JSON.parse(message.Body);
                     msg = JSON.parse(body.Message);
-                    var destination = msg.mail.destination[0];
-                    var type = msg.notificationType;
-                    var time = msg.mail.timestamp;
-                    var id = msg.mail.messageId;
-                    var from = msg.mail.source;
-                    var subject = msg.mail.commonHeaders.subject;
-                    var otr = "<tr>";
-                    var ftr = "</tr>";
-                    var oline = "<td>";
-                    var cline = "</td>";
-                    var btype = null;
-                    var bsubtype = null;
-                    var diagcode = null;
 
-                    //console.log(msg);
+                    if (typeof msg !== 'undefined' && typeof msg.mail !== 'undefined') {
+                        var destination = msg.mail.destination[0];
+                        var type = msg.notificationType;
+                        var time = msg.mail.timestamp;
+                        var id = msg.mail.messageId;
+                        var from = msg.mail.source;
 
-                    if (type == "Bounce") {
-                        btype = msg.bounce.bounceType; // Permanent || Transient
-                        bsubtype = msg.bounce.bounceSubType; // General || Supressed
-                        if (btype == "Permanent" && bsubtype == "Suppressed") {
-                            diagcode = "Suppressed by SES";
-                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
-                            msgSuppres.push(text);
-
-                        } else if (btype == "Permanent" && bsubtype == "General") {
-                            diagcode = msg.bounce.bouncedRecipients[0].diagnosticCode;
-                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
-                            msgBouncePerm.push(text);
-
-                        } else if (btype == "Permanent" && bsubtype == "NoEmail") {
-                            diagcode = msg.bounce.bouncedRecipients[0].diagnosticCode;
-                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
-                            msgBouncePerm.push(text);
-
-                        } else if (btype == "Undetermined") {
-                            diagcode = msg.bounce.bouncedRecipients[0].diagnosticCode;
-                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
-                            msgBouncePerm.push(text);
-
-                        } else if (btype == "Transient") {
-                            diagcode = "soft-Bounce";
-                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
-                            msgBounceTrans.push(text);
-
+                        if (typeof msg.mail.commonHeaders === 'undefined' || typeof msg.mail.commonHeaders.subject === 'undefined') {
+                            var subject = 'undefined';
                         } else {
-                            console.log("it's an unknown bounce");
-                            diagcode = "unknown";
-                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
-                            msgBouncePerm.push(text);
+                            var subject = msg.mail.commonHeaders.subject;
                         }
 
-                    } else if (type == "Delivery") {
-                        diagcode = "null";
-                        text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
-                        msgDeliveries.push(text);
+                        var otr = "<tr>";
+                        var ftr = "</tr>";
+                        var oline = "<td>";
+                        var cline = "</td>";
+                        var btype = null;
+                        var bsubtype = null;
+                        var diagcode = null;
 
-                    } else if (type == "Complaint") {
-                        btype = "null";
-                        bsubtype = "null";
-                        diagcode = "null";
-                        text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                        //console.log(msg);
 
-                        msgComplaint.push(text);
+                        if (type == "Bounce") {
+                            btype = msg.bounce.bounceType; // Permanent || Transient
+                            bsubtype = msg.bounce.bounceSubType; // General || Supressed
+                            if (btype == "Permanent" && bsubtype == "Suppressed") {
+                                diagcode = "Suppressed by SES";
+                                text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                                msgSuppres.push(text);
 
-                    }
+                            } else if (btype == "Permanent" && bsubtype == "General") {
+                                diagcode = msg.bounce.bouncedRecipients[0].diagnosticCode;
+                                text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                                msgBouncePerm.push(text);
 
-                    else {
-                        console.log("not identified");
-                    }
+                            } else if (btype == "Permanent" && bsubtype == "NoEmail") {
+                                diagcode = msg.bounce.bouncedRecipients[0].diagnosticCode;
+                                text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                                msgBouncePerm.push(text);
 
-                    messages.push(i);
+                            } else if (btype == "Undetermined") {
+                                diagcode = msg.bounce.bouncedRecipients[0].diagnosticCode;
+                                text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                                msgBouncePerm.push(text);
 
-                    deleteMessage(message);
-                    //console.log("Array size = " + messages.length + " with queue size = " + queueSize);
+                            } else if (btype == "Transient") {
+                                diagcode = "soft-Bounce";
+                                text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                                msgBounceTrans.push(text);
 
-                    if (messages.length == queueSize) {
+                            } else {
+                                console.log("it's an unknown bounce");
+                                diagcode = "unknown";
+                                text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                                msgBouncePerm.push(text);
+                            }
 
-                        var bp = msgBouncePerm.join('');
-                        var sp = msgSuppres.join('');
-                        var bt = msgBounceTrans.join('');
-                        var cp = msgComplaint.join('');
-                        var dl = msgDeliveries.join('');
-                        var begin = fs.readFileSync('template/begin.html', 'utf8');
-                        var middle = bp + sp + bt + cp + dl;
-                        var end = fs.readFileSync('template/end.html', 'utf8');
-                        content = begin + middle + end;
+                        } else if (type == "Delivery") {
+                            diagcode = "null";
+                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
+                            msgDeliveries.push(text);
 
-                        s3upload();
+                        } else if (type == "Complaint") {
+                            btype = "null";
+                            bsubtype = "null";
+                            diagcode = "null";
+                            text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
 
+                            msgComplaint.push(text);
+
+                        }
+
+                        else {
+                            console.log("not identified");
+                        }
+
+                        messages.push(i);
                     }
                 } else {
                     console.log("data without messages.");
+                }
+
+                deleteMessage(message);
+                //console.log("Array size = " + messages.length + " with queue size = " + queueSize);
+
+                messagesProcessed++;
+                if (messagesProcessed == queueSize) {
+                    var bp = msgBouncePerm.join('');
+                    var sp = msgSuppres.join('');
+                    var bt = msgBounceTrans.join('');
+                    var cp = msgComplaint.join('');
+                    var dl = msgDeliveries.join('');
+                    var begin = fs.readFileSync('template/begin.html', 'utf8');
+                    var middle = bp + sp + bt + cp + dl;
+                    var end = fs.readFileSync('template/end.html', 'utf8');
+                    content = begin + middle + end;
+
+                    s3upload();
                 }
             });
         }
