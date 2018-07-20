@@ -175,7 +175,13 @@ exports.handler = (event, context, callback) => {
                                 msgBouncePerm.push(text);
 
                             } else if (btype == "Transient") {
-                                diagcode = "soft-Bounce";
+                                if (typeof msg.bounce.bouncedRecipients !== 'undefined' &&
+                                    typeof msg.bounce.bouncedRecipients[0] !== 'undefined' &&
+                                    typeof msg.bounce.bouncedRecipients[0].diagnosticCode !== 'undefined') {
+                                    diagcode = msg.bounce.bouncedRecipients[0].diagnosticCode;
+                                } else {
+                                    diagcode = "soft-Bounce";
+                                }
                                 text = otr + oline + type + cline + oline + btype + cline + oline + bsubtype + cline + oline + destination + cline + oline + diagcode + cline + oline + time + cline + oline + id + cline + oline + from + cline + oline + subject + cline + ftr;
                                 msgBounceTrans.push(text);
 
