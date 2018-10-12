@@ -87,16 +87,18 @@ exports.handler = (event, context, callback) => {
     }
 
     function deleteMessage(message) {
-        sqs.deleteMessage({
-            QueueUrl: queueURL,
-            ReceiptHandle: message.ReceiptHandle
-        }, (err, data) => {
-            if (err) {
-                console.log(err);
-                throw err;
-            }
-            // console.log("Data removed. Response = " + data);
-        });
+        if (typeof message.ReceiptHandle !== 'undefined') {
+            sqs.deleteMessage({
+                QueueUrl: queueURL,
+                ReceiptHandle: message.ReceiptHandle
+            }, (err, data) => {
+                if (err) {
+                    console.log(err);
+                    throw err;
+                }
+                // console.log("Data removed. Response = " + data);
+            });
+        }
     }
 
     //Start Receive message
